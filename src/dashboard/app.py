@@ -26,10 +26,6 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(_here))
 MODELS_DIR   = os.path.join(PROJECT_ROOT, 'models')
 FEEDBACK_CSV = os.path.join(MODELS_DIR, 'feedback_log.csv')
 
-# ── OpenRouter config ───────────────────────────────────────────────
-OPENROUTER_API_KEY = "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"
-OPENROUTER_MODEL   = "meta-llama/llama-3.3-70b-instruct"
-
 # ── page config ────────────────────────────────────────────────────
 st.set_page_config(
     page_title="DRISHTI — Detecting, Preventing & Adapting to Financial Fraud",
@@ -37,6 +33,18 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ── OpenRouter config ───────────────────────────────────────────────
+# Load API key from Streamlit secrets after page config; fallback to environment variable
+try:
+    OPENROUTER_API_KEY = st.secrets.get("OPENROUTER_API_KEY")
+except:
+    OPENROUTER_API_KEY = None
+
+if not OPENROUTER_API_KEY:
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", None)
+
+OPENROUTER_MODEL   = "meta-llama/llama-3.3-70b-instruct"
 
 LOGO_PATH = os.path.join(_here, 'assets', 'logo.jpg')
 if os.path.exists(LOGO_PATH):
@@ -264,6 +272,9 @@ def feedback_count():
 
 # ── OpenRouter API ──────────────────────────────────────────────────
 def call_openrouter(prompt: str, max_tokens: int = 500) -> str:
+    if not OPENROUTER_API_KEY:
+        return "⚠️ AI narrator unavailable: OpenRouter API key not configured. Please set OPENROUTER_API_KEY in Streamlit secrets or environment variables."
+    
     try:
         resp = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -890,9 +901,8 @@ elif page == "👤 Investigate Account":
 
             if st.session_state.get(f'narrator_{sel_id}'):
                 narr_text = st.session_state[f'narrator_{sel_id}']
-                st.markdown(f"""<div class="narrator-box">{
-                    narr_text.replace('\n\n', '</p><p>').replace('\n', '<br>')
-                }</div>""", unsafe_allow_html=True)
+                formatted_narr = narr_text.replace('\n\n', '</p><p>').replace('\n', '<br>')
+                st.markdown(f"""<div class="narrator-box">{formatted_narr}</div>""", unsafe_allow_html=True)
 
         with col_sar:
             st.markdown('<p class="section-label">📄 Draft SAR Narrative</p>', unsafe_allow_html=True)
